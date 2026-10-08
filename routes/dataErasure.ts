@@ -101,15 +101,24 @@ router.post('/', (req: Request<Record<string, unknown>, Record<string, unknown>,
       }
 
       if (req.body.layout) {
-        const filePath: string = path.resolve(req.body.layout).toLowerCase()
-        const isForbiddenFile: boolean = (filePath.includes('ftp') || filePath.includes('ctf.key') || filePath.includes('encryptionkeys'))
+        const safeViewsDir: string = path.resolve('views').toLowerCase()
+        let filePath: string = ''
+        if (typeof req.body.layout === 'string') {
+          filePath = path.resolve(req.body.layout).toLowerCase()
+          if (!filePath.startsWith(safeViewsDir + path.sep)) {
+            filePath = path.resolve(safeViewsDir, req.body.layout).toLowerCase()
+          }
+        }
+        const isForbiddenFile: boolean = typeof req.body.layout !== 'string' ||
+          !filePath.startsWith(safeViewsDir + path.sep) ||
+          (filePath.includes('ftp') || filePath.includes('ctf.key') || filePath.includes('encryptionkeys'))
         if (!isForbiddenFile) {
           res.render('dataErasureResult', {
             ...req.body,
             ...themeVars
           }, (error, html) => {
             if (!html || error) {
-              next(new Error(error.message))
+              next(new Error(error?.message ?? 'Render failed'))
             } else {
               const sendlfrResponse: string = html.slice(0, 100) + '......'
               res.send(sendlfrResponse)
